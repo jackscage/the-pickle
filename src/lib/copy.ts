@@ -46,6 +46,19 @@ export const copy = {
     linkExpired:
       "That link has expired. Here's a fresh one — no need to start over.",
     genericError: "Something went wrong sending that. Try again?",
+
+    // Three specific failures that were all showing genericError, which cost
+    // real debugging time. Each of these has a different fix, so each says so.
+    rateLimited:
+      "That's a lot of sign-in emails in a short time. Supabase's built-in " +
+      "mail allows only a couple an hour while we're testing — wait a bit, " +
+      "or sign in with a password if you've set one.",
+    redirectNotAllowed:
+      "The sign-in link can't point back to this address yet. It needs adding " +
+      "to the redirect list in Supabase (Authentication → URL Configuration).",
+    mailFailed:
+      "The email wouldn't send. That's the mail service rather than your " +
+      "account — try again in a minute.",
   },
 
   profile: {

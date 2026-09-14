@@ -57,9 +57,10 @@ export function SignInForm({
   if (mode === "password") {
     return (
       <div className="space-y-5">
-        {expired ? <Notice>{copy.signIn.linkExpired}</Notice> : null}
         {passwordState.status === "error" ? (
           <Notice>{passwordState.message}</Notice>
+        ) : expired ? (
+          <Notice>{copy.signIn.linkExpired}</Notice>
         ) : null}
 
         <form action={passwordAction} className="space-y-4">
@@ -102,9 +103,10 @@ export function SignInForm({
 
   return (
     <div className="space-y-5">
-      {expired ? <Notice>{copy.signIn.linkExpired}</Notice> : null}
       {linkState.status === "error" ? (
         <Notice>{linkState.message}</Notice>
+      ) : expired ? (
+        <Notice>{copy.signIn.linkExpired}</Notice>
       ) : null}
 
       <form action={linkAction} className="space-y-4">
