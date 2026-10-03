@@ -14,3 +14,7 @@ build/
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# Generated reports and artifacts dropped here by Claude sessions.
+# They belong in Google Drive, not in the app source repo.
+Claude outputs/
