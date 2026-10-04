@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/account";
 import { getGroup, getRoster, formatPickleCode } from "@/lib/groups";
 import { copy, groupErrorMessage } from "@/lib/copy";
 import { getCurrentJar } from "@/lib/jars";
+import { countPickles } from "@/lib/pickles";
 import { Avatar, Notice, Shell } from "@/components/ui";
 import { Roster } from "@/components/roster";
 import { CurrentJar } from "@/components/current-jar";
@@ -25,20 +26,19 @@ export default async function GroupPage({
   searchParams,
 }: {
   params: Promise<{ groupId: string }>;
-  searchParams: Promise<{ new?: string; error?: string }>;
+  searchParams: Promise<{ new?: string; error?: string; put?: string }>;
 }) {
   const { groupId } = await params;
-  const { new: justCreated, error } = await searchParams;
+  const { new: justCreated, error, put } = await searchParams;
 
   const account = await requireProfile();
   const group = await getGroup(groupId, account.userId);
   const roster = await getRoster(groupId, account.userId);
   const jar = await getCurrentJar(groupId);
 
-  // Pickles arrive in phase 7. Until then every jar is empty, and the
-  // fullness picture is fed zero. Phase 7 replaces this with a count from a
-  // database function that returns one number and nothing else.
-  const pickleCount = 0;
+  // One number from a database function that returns nothing else. It only
+  // picks the fullness stage; the count itself never reaches the browser.
+  const pickleCount = jar ? await countPickles(jar.id) : 0;
 
   return (
     <Shell wide>
@@ -75,6 +75,12 @@ export default async function GroupPage({
       {error ? (
         <div className="mt-6">
           <Notice>{groupErrorMessage(error)}</Notice>
+        </div>
+      ) : null}
+
+      {put ? (
+        <div className="mt-6">
+          <Notice tone="good">{copy.pickle.done}</Notice>
         </div>
       ) : null}
 

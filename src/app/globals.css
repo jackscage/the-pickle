@@ -18,6 +18,28 @@
   }
 }
 
+/*
+ * Opening the jar: pickles appear one after another (spec section 7, "pickles
+ * reveal one at a time"). A basic placeholder — the real opening animation is
+ * Design Stage work (spec section 17a). The delay between pickles is set per
+ * pickle in the page, via --reveal-delay.
+ */
+@keyframes pickle-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px) rotate(-1deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pickle-reveal {
+  animation: pickle-reveal 500ms ease-out both;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

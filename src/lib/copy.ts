@@ -159,6 +159,11 @@ export const copy = {
     JAR_NOT_ACCEPTING: "That jar's already sealed.",
     JAR_ALREADY_OPENED: "That jar's already been opened.",
 
+    // Putting pickles in (migration 0003).
+    EMPTY_PICKLE: "Write something first.",
+    PICKLE_TOO_LONG: "That's over 1,200 characters. Trim it a little.",
+    SLOW_DOWN: "That's a lot of pickles in a few minutes. Take a breather and try again shortly.",
+
     UNKNOWN: "That didn't work. Try again?",
   } as const,
 
@@ -219,6 +224,26 @@ export const copy = {
     pastTitle: "Past Jars",
     openedOn: (date: string) => `Opened ${date}`,
     nobodyPutAnything: "Nobody put anything in this time.",
+  },
+
+  /** Writing a pickle and putting it in (spec section 7, "Submit a Pickle"). */
+  pickle: {
+    writeTitle: "Put It In The Pickle",
+    writeBlurb: "Nobody will know it was you unless you tell them.",
+    textLabel: "Your pickle",
+    textPlaceholder: "A joke, a note, a confession…",
+    charactersLeft: (n: number) => (n === 1 ? "1 character left" : `${n} characters left`),
+    tooLongBy: (n: number) => `${n} over`,
+    preview: "Preview",
+    keepEditing: "Keep editing",
+    previewNote: "This is how it'll look when the jar opens.",
+    putItIn: "Put it in",
+    puttingIn: "Putting it in…",
+    done: "Your pickle is in the jar.",
+    putAnother: "Put another in",
+    // Once a jar is opened.
+    anonymous: "Anonymous",
+    youWroteThis: "You wrote this",
   },
 
   /** How a group's next jar begins (a group setting, chosen at creation). */

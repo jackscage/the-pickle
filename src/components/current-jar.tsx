@@ -2,7 +2,7 @@ import { copy } from "@/lib/copy";
 import { fullnessStage, STAGE_FILL } from "@/lib/fullness";
 import { renameJar, sealJar, startJar } from "@/lib/actions/jars";
 import type { Jar } from "@/lib/jars";
-import { Field, Jar as JarArt, inputClass } from "@/components/ui";
+import { ButtonLink, Field, Jar as JarArt, inputClass } from "@/components/ui";
 import { OpenJarButton, PendingButton } from "@/components/jar-controls";
 
 /**
@@ -10,6 +10,10 @@ import { OpenJarButton, PendingButton } from "@/components/jar-controls";
  *
  * Admin controls appear only for admins, but that is presentation. The
  * database functions behind each button check again and refuse anyone else.
+ *
+ * `pickleCount` is used here, on the server, only to pick a fullness stage.
+ * The number itself is never shown or sent to the browser (spec section 10:
+ * stages, not counts).
  */
 export function CurrentJar({
   groupId,
@@ -50,6 +54,12 @@ export function CurrentJar({
 
       {jar.status === "accepting" && pickleCount === 0 ? (
         <p className="mt-6 text-sm font-semibold text-pickle">{copy.jar.emptyCurrent}</p>
+      ) : null}
+
+      {jar.status === "accepting" ? (
+        <ButtonLink href={`/groups/${groupId}/put`} className="mt-6">
+          {copy.terms.submit}
+        </ButtonLink>
       ) : null}
 
       {youAreAdmin ? <AdminControls groupId={groupId} jar={jar} /> : null}

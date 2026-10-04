@@ -3,12 +3,16 @@ import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/account";
 import { getGroup } from "@/lib/groups";
 import { formatJarDate, getJar } from "@/lib/jars";
+import { listOpenedPickles } from "@/lib/pickles";
 import { renameJar } from "@/lib/actions/jars";
 import { copy } from "@/lib/copy";
 import { Field, Jar as JarArt, Shell, inputClass } from "@/components/ui";
 import { PendingButton } from "@/components/jar-controls";
 
 export const dynamic = "force-dynamic";
+
+/** Gap between one pickle appearing and the next. A Design Stage number. */
+const REVEAL_STEP_MS = 350;
 
 /**
  * An opened jar — the reveal, and afterwards its place in Past Jars.
@@ -27,6 +31,8 @@ export default async function OpenedJarPage({
   const jar = await getJar(groupId, jarId);
 
   if (jar.status !== "opened") redirect(`/groups/${groupId}`);
+
+  const pickles = await listOpenedPickles(jar.id);
 
   const opened = copy.jar.openedOn(formatJarDate(jar.openedAt!));
 
@@ -49,13 +55,38 @@ export default async function OpenedJarPage({
         </div>
       </header>
 
-      {/* The pickles go here once they exist (phase 7). Until then every
-          jar really was empty, so this is the true state, not a placeholder. */}
-      <section className="mt-10 rounded-2xl border-2 border-dashed border-brine bg-paper-raised px-6 py-12 text-center">
-        <p className="text-lg font-semibold text-ink-soft">
-          {copy.jar.nobodyPutAnything}
-        </p>
-      </section>
+      {pickles.length === 0 ? (
+        <section className="mt-10 rounded-2xl border-2 border-dashed border-brine bg-paper-raised px-6 py-12 text-center">
+          <p className="text-lg font-semibold text-ink-soft">
+            {copy.jar.nobodyPutAnything}
+          </p>
+        </section>
+      ) : (
+        // Each pickle is a note: its words in handwriting, and either
+        // "Anonymous" or — for the viewer's own only — "You wrote this".
+        // Nothing else about authorship exists on this page to show.
+        <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {pickles.map((pickle, index) => (
+            <li
+              key={pickle.id}
+              data-testid="pickle"
+              className="pickle-reveal flex flex-col rounded-2xl border-2 border-brine bg-paper-raised px-5 py-4 shadow-sm"
+              style={{ ["--reveal-delay" as string]: `${index * REVEAL_STEP_MS}ms` }}
+            >
+              <p className="flex-1 whitespace-pre-wrap break-words font-hand text-2xl leading-snug text-ink">
+                {pickle.text}
+              </p>
+              <p
+                className={`mt-4 text-xs font-bold uppercase tracking-[0.14em] ${
+                  pickle.isMine ? "text-ember" : "text-ink-faint"
+                }`}
+              >
+                {pickle.isMine ? copy.pickle.youWroteThis : copy.pickle.anonymous}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {group.youAreAdmin ? (
         <form action={renameJar} className="mt-10 flex max-w-md items-end gap-2">
