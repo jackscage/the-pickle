@@ -18,3 +18,10 @@ next-env.d.ts
 # Generated reports and artifacts dropped here by Claude sessions.
 # They belong in Google Drive, not in the app source repo.
 Claude outputs/
+
+# Playwright's leftovers: failure recordings and reports. Regenerated on
+# every run, so there is nothing worth keeping in git.
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
