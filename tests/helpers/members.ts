@@ -144,15 +144,42 @@ export class Cast {
     if (error) throw new Error(`Test join failed: ${error.message}`);
   }
 
+  /** Makes `admin` start a jar in an 'admin'-mode group; returns its id. */
+  async startJar(admin: Member, groupId: string): Promise<string> {
+    const { data, error } = await admin.db.rpc("start_jar", { p_group_id: groupId });
+    if (error || !data) throw new Error(`Test jar failed: ${error?.message}`);
+    return data as string;
+  }
+
+  /** `author` puts a pickle in the jar, exactly as the submit screen does. */
+  async putPickle(author: Member, jarId: string, text: string): Promise<string> {
+    const { data, error } = await author.db.rpc("put_pickle", {
+      p_jar_id: jarId,
+      p_text: text,
+    });
+    if (error || !data) throw new Error(`Test pickle failed: ${error?.message}`);
+    return data as string;
+  }
+
+  /**
+   * Deletes the groups made so far — and with them their jars, pickles,
+   * authorship rows and memberships — but keeps the people. Run between
+   * tests so each starts clean while sharing one cast.
+   */
+  async cleanUpGroups(): Promise<void> {
+    if (this.groupIds.length > 0) {
+      await adminClient().from("pickle_groups").delete().in("id", this.groupIds);
+    }
+    this.groupIds = [];
+  }
+
   /**
    * Deletes everything this test made. Groups first (which takes their jars
    * and memberships with them), then the accounts (which takes profiles).
    */
   async cleanUp(): Promise<void> {
     const admin = adminClient();
-    if (this.groupIds.length > 0) {
-      await admin.from("pickle_groups").delete().in("id", this.groupIds);
-    }
+    await this.cleanUpGroups();
     for (const member of this.members) {
       await admin.auth.admin.deleteUser(member.id);
     }
