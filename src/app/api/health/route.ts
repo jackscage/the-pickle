@@ -140,7 +140,7 @@ export async function GET() {
 
   return NextResponse.json({
     status: hasUrl && hasAnonKey && database === "ok" ? "ok" : "misconfigured",
-    phase: "2-5 - accounts, profiles, groups, roster",
+    phase: "1-7 - accounts, profiles, groups, roster, jars, pickles",
     supabase: {
       urlConfigured: hasUrl,
       anonKeyConfigured: hasAnonKey,
