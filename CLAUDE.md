@@ -153,7 +153,7 @@ multipliers — with considered ones, using playtester input. Build so those can
 be swapped without rewriting behavior: keep artwork, copy, and tunable numbers
 out of the logic that uses them.
 
-## Where things stand (end of session 6, 4 Oct 2026)
+## Where things stand (end of session 8, 4 Oct 2026)
 
 Phases 1 through 7 are built, tested and live: foundation, accounts,
 profiles, Pickle Groups, roster, **jars, and pickles with the split-table
