@@ -25,3 +25,6 @@ Claude outputs/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# The second copy of the app the tests run (see next.config.mjs).
+/.next-*/

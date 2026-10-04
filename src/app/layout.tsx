@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito, Caveat } from "next/font/google";
 import "./globals.css";
+import { FeedbackButton } from "@/feedback/feedback-button";
 
 const nunito = Nunito({
   subsets: ["latin"],
@@ -35,7 +36,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${nunito.variable} ${caveat.variable}`}>
-      <body className="min-h-dvh font-sans">{children}</body>
+      <body className="min-h-dvh font-sans">
+        {children}
+        <FeedbackButton />
+      </body>
     </html>
   );
 }

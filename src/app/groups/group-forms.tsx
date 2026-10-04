@@ -74,7 +74,7 @@ export function JoinGroupForm() {
   );
 }
 
-/** Copies the code to the clipboard, with a small bit of feedback. */
+/** Copies the code to the clipboard, and briefly says so. */
 export function CopyCodeButton({ code }: { code: string }) {
   return (
     <button
