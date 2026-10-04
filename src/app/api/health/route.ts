@@ -60,6 +60,20 @@ const REFUSAL_CODES = new Set([
 const SCHEMA_CACHE_REFUSAL = /schema cache|could not find the table/i;
 
 /**
+ * An error carrying neither a code nor a message.
+ *
+ * On THIS probe that can only mean the API answered and the client could not
+ * read the answer — which is still an answer. Treating it as a fault is the
+ * mistake this file has now made three times.
+ *
+ * Kept as a backstop even though the query above no longer provokes it: the
+ * rule should hold regardless of how the probe is written.
+ */
+function isEmptyError(error: { code?: string | null; message?: string | null }): boolean {
+  return !error.code && !(error.message ?? "").trim();
+}
+
+/**
  * Turn a database error into something a human can act on.
  *
  * Truncated, because an error message is not a place to dump a stack trace
@@ -83,9 +97,12 @@ export async function GET() {
   if (hasUrl && hasAnonKey) {
     try {
       const supabase = await createClient();
-      const { error } = await supabase
-        .from("pickle_groups")
-        .select("id", { count: "exact", head: true });
+      // NOT `head: true`. A HEAD request has no response body, so when the
+      // API refuses, there is nothing for the client to parse and the error
+      // arrives with no code and an empty message — which is exactly how this
+      // check spent three weeks unable to say what was wrong. Asking for one
+      // row costs nothing and keeps the error readable.
+      const { error } = await supabase.from("pickle_groups").select("id").limit(1);
 
       if (!error) {
         database = "ok";
@@ -93,7 +110,8 @@ export async function GET() {
       } else if (
         REFUSAL_CODES.has(error.code ?? "") ||
         /permission denied|not authorized|JWT/i.test(error.message ?? "") ||
-        SCHEMA_CACHE_REFUSAL.test(error.message ?? "")
+        SCHEMA_CACHE_REFUSAL.test(error.message ?? "") ||
+        isEmptyError(error)
       ) {
         // The expected answer for a signed-out request. The tables exist and
         // are protected — which is the correct state, not a fault.
