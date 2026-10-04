@@ -9,6 +9,7 @@ import {
 } from "@/lib/actions/groups";
 import { copy } from "@/lib/copy";
 import { Button, Field, Notice, inputClass } from "@/components/ui";
+import { JarStartModeFields } from "@/components/jar-start-mode";
 
 const EMPTY: GroupFormState = { status: "idle" };
 
@@ -37,6 +38,7 @@ export function CreateGroupForm() {
           required
         />
       </Field>
+      <JarStartModeFields />
       <Submit
         label={copy.groups.createButton}
         busyLabel={copy.groups.creating}

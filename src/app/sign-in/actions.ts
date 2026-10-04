@@ -63,6 +63,13 @@ function describeSendFailure(error: {
   const message = error.message ?? "";
   const code = error.code ?? "";
 
+  // The full technical reason, for whoever maintains the app. It goes to the
+  // server log (Vercel -> the project -> Logs), not the screen. The likely
+  // fixes: a rate limit means wait or set up proper email sending in
+  // Supabase; a redirect error means the address is missing from Supabase's
+  // Authentication -> URL Configuration list.
+  console.warn("Sign-in email failed:", error.status, code, message);
+
   if (
     error.status === 429 ||
     code.includes("rate") ||

@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
+import type { Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { copy } from "../../src/lib/copy";
 
 /**
  * Pretend people for the tests.
@@ -59,6 +61,24 @@ export type Member = {
   /** Signed in as this person, with exactly their powers. */
   db: SupabaseClient;
 };
+
+/**
+ * Signs `member` in through the real sign-in screen, with a password, and
+ * lands them on `next`. Browser tests use this so they exercise sign-in
+ * exactly as a person would rather than planting a session behind its back.
+ */
+export async function signInThroughScreen(
+  page: Page,
+  member: Member,
+  next = "/groups",
+): Promise<void> {
+  await page.goto(`/sign-in?next=${encodeURIComponent(next)}`);
+  await page.getByRole("button", { name: copy.signIn.usePassword }).click();
+  await page.getByLabel(copy.signIn.emailLabel).fill(member.email);
+  await page.getByLabel(copy.signIn.passwordLabel).fill(member.password);
+  await page.getByRole("button", { name: copy.signIn.signInWithPassword }).click();
+  await page.waitForURL((url) => url.pathname === next);
+}
 
 /** Makes the people a test needs, and tidies them away afterwards. */
 export class Cast {

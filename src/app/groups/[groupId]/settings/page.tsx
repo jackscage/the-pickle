@@ -2,8 +2,11 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/account";
 import { getGroup, formatPickleCode } from "@/lib/groups";
 import { leaveGroup, regenerateCode } from "@/lib/actions/groups";
-import { copy } from "@/lib/copy";
+import { setJarStartMode } from "@/lib/actions/jars";
+import { copy, groupErrorMessage } from "@/lib/copy";
 import { Button, Notice, Shell } from "@/components/ui";
+import { JarStartModeFields } from "@/components/jar-start-mode";
+import { PendingButton } from "@/components/jar-controls";
 import { CopyCodeButton } from "../../group-forms";
 
 export const dynamic = "force-dynamic";
@@ -11,20 +14,20 @@ export const dynamic = "force-dynamic";
 /**
  * Group settings.
  *
- * Only the parts of section 15 that this phase's schema supports: the code,
- * regenerating it, and leaving. Sealing and opening jars, the moderation
- * queue, removing members and locking the group arrive with phases 8 and 13 —
- * putting dead buttons here now would only teach people they don't work.
+ * Only what the database currently supports: the code, how new jars start,
+ * and leaving. Section 15's other admin tools (moderation, removing members,
+ * locking) get their place here as they are built — there are no dead
+ * buttons for them in the meantime.
  */
 export default async function GroupSettingsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ groupId: string }>;
-  searchParams: Promise<{ error?: string; codechanged?: string }>;
+  searchParams: Promise<{ error?: string; codechanged?: string; saved?: string }>;
 }) {
   const { groupId } = await params;
-  const { error, codechanged } = await searchParams;
+  const { error, codechanged, saved } = await searchParams;
 
   const account = await requireProfile();
   const group = await getGroup(groupId, account.userId);
@@ -39,12 +42,12 @@ export default async function GroupSettingsPage({
       </Link>
 
       <h1 className="mt-5 text-3xl font-extrabold tracking-tight">
-        Group settings
+        {copy.common.groupSettingsTitle}
       </h1>
 
       {error ? (
         <div className="mt-5">
-          <Notice>{error}</Notice>
+          <Notice>{groupErrorMessage(error)}</Notice>
         </div>
       ) : null}
       {codechanged ? (
@@ -52,6 +55,11 @@ export default async function GroupSettingsPage({
           <Notice tone="good">
             New code below. The old one has stopped working.
           </Notice>
+        </div>
+      ) : null}
+      {saved === "jars" ? (
+        <div className="mt-5">
+          <Notice tone="good">{copy.jarStartMode.saved}</Notice>
         </div>
       ) : null}
 
@@ -83,6 +91,19 @@ export default async function GroupSettingsPage({
         ) : null}
       </section>
 
+      {group.youAreAdmin ? (
+        <>
+          <hr className="my-10 border-brine" />
+          <section>
+            <form action={setJarStartMode} className="space-y-4">
+              <input type="hidden" name="group_id" value={group.id} />
+              <JarStartModeFields current={group.jarStartMode} />
+              <PendingButton label={copy.jarStartMode.save} variant="secondary" />
+            </form>
+          </section>
+        </>
+      ) : null}
+
       <hr className="my-10 border-brine" />
 
       <section>
@@ -95,11 +116,6 @@ export default async function GroupSettingsPage({
           </Button>
         </form>
       </section>
-
-      <p className="mt-10 text-xs text-ink-faint">
-        Sealing and opening jars, moderation and removing members arrive with
-        the jar itself, in a later phase.
-      </p>
     </Shell>
   );
 }

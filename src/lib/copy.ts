@@ -48,14 +48,16 @@ export const copy = {
     genericError: "Something went wrong sending that. Try again?",
 
     // Three specific failures that were all showing genericError, which cost
-    // real debugging time. Each of these has a different fix, so each says so.
+    // real debugging time. Each has a different fix, so each says something
+    // different. The technical detail for whoever maintains the app goes to
+    // the server log (see describeSendFailure), never onto the screen: the
+    // product does not name its vendors or explain its own plumbing.
     rateLimited:
-      "That's a lot of sign-in emails in a short time. Supabase's built-in " +
-      "mail allows only a couple an hour while we're testing — wait a bit, " +
+      "That's a lot of sign-in emails in a short time. Wait a few minutes, " +
       "or sign in with a password if you've set one.",
     redirectNotAllowed:
-      "The sign-in link can't point back to this address yet. It needs adding " +
-      "to the redirect list in Supabase (Authentication → URL Configuration).",
+      "Sign-in links can't be sent from this address. Try again from the " +
+      "app's usual address.",
     mailFailed:
       "The email wouldn't send. That's the mail service rather than your " +
       "account — try again in a minute.",
@@ -112,6 +114,9 @@ export const copy = {
     namePlaceholder: "Camp staff, the group chat, etc.",
     createButton: "Make the group",
     creating: "Making it…",
+    createAdminNote:
+      "You'll be the group's admin, which means you decide when a jar gets " +
+      "sealed and opened. You can hand that to other people later.",
     joinTitle: "Join a Pickle Group",
     joinBlurb: "Someone in the group will have the code.",
     codeLabel: "Pickle Code",
@@ -146,6 +151,14 @@ export const copy = {
     NOT_ADMIN: "Only an admin can do that.",
     LAST_ADMIN:
       "You're the only admin. Make someone else an admin first, then you can leave.",
+    BAD_JAR_START_MODE: "Pick how new jars should start.",
+
+    // Jar rules (migration 0002).
+    JAR_ALREADY_CURRENT: "There's already a jar going. Open that one first.",
+    JAR_NOT_FOUND: "That jar isn't here any more.",
+    JAR_NOT_ACCEPTING: "That jar's already sealed.",
+    JAR_ALREADY_OPENED: "That jar's already been opened.",
+
     UNKNOWN: "That didn't work. Try again?",
   } as const,
 
@@ -161,11 +174,62 @@ export const copy = {
   },
 
   jar: {
+    currentLabel: "The Current Jar",
     emptyCurrent: "The jar's empty. Be the first to put something in.",
     emptyArchive: "No jars opened yet. History starts with your first one.",
     loading: "Fermenting…",
-    comingSoon:
-      "The jar itself is the next thing to be built. For now, this is where it will live.",
+
+    /**
+     * The five fullness stages (spec section 10). Shown instead of a count —
+     * a jar is "half full", never "12 pickles".
+     */
+    stages: {
+      empty: "Empty",
+      few: "A few pickles",
+      half: "Half full",
+      packed: "Packed",
+      overflowing: "Overflowing",
+    },
+    stageLabel: (stage: string) => `A pickle jar: ${stage.toLowerCase()}`,
+
+    accepting: "Open for pickles.",
+    sealed: "Sealed. Nothing more goes in. It opens when an admin says so.",
+
+    // No current jar.
+    noneTitle: "No jar right now.",
+    noneMember: "An admin starts the next one.",
+    noneAdmin: "Start the next one whenever the group's ready.",
+    start: "Start a new jar",
+    starting: "Starting…",
+
+    // Naming (optional).
+    nameLabel: "Name it (optional)",
+    namePlaceholder: "Lake weekend, end of term, etc.",
+    rename: "Rename",
+    renameSave: "Save name",
+
+    // Admin controls.
+    adminTitle: "Admin",
+    sealExplain: "Stops new pickles without opening it. Optional.",
+    openConfirm: "Once opened, the Pickle cannot be resealed.",
+    openYes: "Yes, open it",
+
+    // Past Jars.
+    pastLink: "Past Jars",
+    pastTitle: "Past Jars",
+    openedOn: (date: string) => `Opened ${date}`,
+    nobodyPutAnything: "Nobody put anything in this time.",
+  },
+
+  /** How a group's next jar begins (a group setting, chosen at creation). */
+  jarStartMode: {
+    title: "How new jars start",
+    admin: "An admin starts each jar",
+    adminHint: "After a jar is opened, the group waits until an admin starts the next.",
+    automatic: "Automatically",
+    automaticHint: "A fresh jar starts the moment the last one is opened.",
+    save: "Save",
+    saved: "Saved.",
   },
 
   common: {
@@ -173,12 +237,21 @@ export const copy = {
     settings: "Settings",
     back: "Back",
     cancel: "Cancel",
+    groupSettingsTitle: "Group settings",
     somethingWrong: "Something went wrong. Try that again?",
   },
 } as const;
 
-/** Turn a database error token into a sentence. */
-export function groupErrorMessage(raw: unknown): string {
+export type GroupErrorKey = keyof typeof copy.groupErrors;
+
+/**
+ * Find which known error a database error (or a token on its own) is.
+ *
+ * Screens pass this short key around in the address bar — `?error=NOT_ADMIN`
+ * — rather than the sentence itself, so a crafted link can only ever make a
+ * screen show one of the messages above, never words of someone's choosing.
+ */
+export function groupErrorKey(raw: unknown): GroupErrorKey {
   const text =
     typeof raw === "string"
       ? raw
@@ -186,9 +259,11 @@ export function groupErrorMessage(raw: unknown): string {
         ? String((raw as { message: unknown }).message)
         : "";
 
-  const keys = Object.keys(copy.groupErrors) as Array<
-    keyof typeof copy.groupErrors
-  >;
-  const hit = keys.find((key) => text.includes(key));
-  return copy.groupErrors[hit ?? "UNKNOWN"];
+  const keys = Object.keys(copy.groupErrors) as GroupErrorKey[];
+  return keys.find((key) => text.includes(key)) ?? "UNKNOWN";
+}
+
+/** Turn a database error, or an error key, into a sentence. */
+export function groupErrorMessage(raw: unknown): string {
+  return copy.groupErrors[groupErrorKey(raw)];
 }

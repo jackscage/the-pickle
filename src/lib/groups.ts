@@ -28,6 +28,7 @@ export type GroupSummary = {
   locked: boolean;
   memberCap: number;
   adminMode: "designated" | "everyone";
+  jarStartMode: "admin" | "automatic";
   memberCount: number;
   youAreAdmin: boolean;
 };
@@ -51,6 +52,7 @@ type MembershipRow = {
     locked: boolean;
     member_cap: number;
     admin_mode: "designated" | "everyone";
+    jar_start_mode: "admin" | "automatic";
   } | null;
 };
 
@@ -61,7 +63,7 @@ export async function listMyGroups(userId: string): Promise<GroupSummary[]> {
   const { data, error } = await supabase
     .from("group_members")
     .select(
-      "group_id, is_admin, pickle_groups(id, name, pickle_code, locked, member_cap, admin_mode)",
+      "group_id, is_admin, pickle_groups(id, name, pickle_code, locked, member_cap, admin_mode, jar_start_mode)",
     )
     .eq("user_id", userId)
     .order("joined_at", { ascending: false });
@@ -84,6 +86,7 @@ export async function listMyGroups(userId: string): Promise<GroupSummary[]> {
       locked: row.pickle_groups.locked,
       memberCap: row.pickle_groups.member_cap,
       adminMode: row.pickle_groups.admin_mode,
+      jarStartMode: row.pickle_groups.jar_start_mode,
       memberCount: counts.get(row.group_id) ?? 0,
       youAreAdmin:
         row.is_admin || row.pickle_groups.admin_mode === "everyone",
@@ -119,7 +122,7 @@ export async function getGroup(
 
   const { data: group } = await supabase
     .from("pickle_groups")
-    .select("id, name, pickle_code, locked, member_cap, admin_mode")
+    .select("id, name, pickle_code, locked, member_cap, admin_mode, jar_start_mode")
     .eq("id", groupId)
     .maybeSingle();
 
@@ -143,6 +146,7 @@ export async function getGroup(
     locked: group.locked,
     memberCap: group.member_cap,
     adminMode: group.admin_mode,
+    jarStartMode: group.jar_start_mode,
     memberCount: counts.get(groupId) ?? 0,
     youAreAdmin: me.is_admin || group.admin_mode === "everyone",
   };

@@ -27,10 +27,7 @@ export default async function NewGroupPage() {
         <CreateGroupForm />
       </div>
 
-      <p className="mt-8 text-sm text-ink-faint">
-        You&rsquo;ll be the group&rsquo;s admin, which means you decide when a
-        jar gets sealed and opened. You can hand that to other people later.
-      </p>
+      <p className="mt-8 text-sm text-ink-faint">{copy.groups.createAdminNote}</p>
     </Shell>
   );
 }

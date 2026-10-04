@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/account";
 import { getGroup, getRoster, formatPickleCode } from "@/lib/groups";
-import { copy } from "@/lib/copy";
-import { Avatar, Jar, Shell } from "@/components/ui";
+import { copy, groupErrorMessage } from "@/lib/copy";
+import { getCurrentJar } from "@/lib/jars";
+import { Avatar, Notice, Shell } from "@/components/ui";
 import { Roster } from "@/components/roster";
+import { CurrentJar } from "@/components/current-jar";
 import { CopyCodeButton } from "../group-forms";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +13,8 @@ export const dynamic = "force-dynamic";
 /**
  * The Current Jar screen — the home of a Pickle Group.
  *
- * The jar itself is phase 6 and the pickles inside it are phase 7, so the
- * middle of this screen is honest about being unfinished rather than faking
- * a jar that does nothing. The roster around it is real and complete.
+ * The middle is the Current Jar (or the lack of one); the roster sits
+ * around it.
  *
  * Layout follows section 18: the roster sits beside the jar on a wide screen
  * and becomes its own screen on a phone, where a cramped sidebar would be
@@ -24,14 +25,20 @@ export default async function GroupPage({
   searchParams,
 }: {
   params: Promise<{ groupId: string }>;
-  searchParams: Promise<{ new?: string }>;
+  searchParams: Promise<{ new?: string; error?: string }>;
 }) {
   const { groupId } = await params;
-  const { new: justCreated } = await searchParams;
+  const { new: justCreated, error } = await searchParams;
 
   const account = await requireProfile();
   const group = await getGroup(groupId, account.userId);
   const roster = await getRoster(groupId, account.userId);
+  const jar = await getCurrentJar(groupId);
+
+  // Pickles arrive in phase 7. Until then every jar is empty, and the
+  // fullness picture is fed zero. Phase 7 replaces this with a count from a
+  // database function that returns one number and nothing else.
+  const pickleCount = 0;
 
   return (
     <Shell wide>
@@ -65,6 +72,12 @@ export default async function GroupPage({
         </div>
       </header>
 
+      {error ? (
+        <div className="mt-6">
+          <Notice>{groupErrorMessage(error)}</Notice>
+        </div>
+      ) : null}
+
       {justCreated ? (
         <section className="mt-6 rounded-2xl border-2 border-ember bg-ember/10 px-5 py-5">
           <h2 className="text-lg font-extrabold text-ink">
@@ -84,22 +97,21 @@ export default async function GroupPage({
       ) : null}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
-        {/* The jar */}
-        <section className="flex flex-col items-center rounded-2xl border-2 border-brine bg-paper-raised px-6 py-12 text-center">
-          <Jar fill={0} label="An empty pickle jar" />
-          <p className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-pickle">
-            The Current Jar
-          </p>
-          <h2 className="mt-2 text-2xl font-extrabold tracking-tight">
-            {copy.jar.emptyCurrent}
-          </h2>
-          <p className="mt-3 max-w-sm text-sm text-ink-soft">
-            {copy.jar.comingSoon}
-          </p>
-          <p className="mt-6 font-hand text-xl text-pickle-bright">
-            &ldquo;nothing in here yet&rdquo;
-          </p>
-        </section>
+        <div>
+          <CurrentJar
+            groupId={group.id}
+            jar={jar}
+            pickleCount={pickleCount}
+            memberCount={group.memberCount}
+            youAreAdmin={group.youAreAdmin}
+          />
+          <Link
+            href={`/groups/${group.id}/past`}
+            className="mt-4 inline-block text-sm font-bold text-pickle underline underline-offset-4"
+          >
+            {copy.jar.pastLink} &rarr;
+          </Link>
+        </div>
 
         {/* The roster: a panel here, its own screen on a phone */}
         <aside className="hidden lg:block">

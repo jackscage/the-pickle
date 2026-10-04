@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { copy, groupErrorMessage } from "@/lib/copy";
+import { copy, groupErrorKey, groupErrorMessage } from "@/lib/copy";
 
 /**
  * Creating, joining and leaving Pickle Groups.
@@ -25,6 +25,8 @@ export async function createGroup(
   formData: FormData,
 ): Promise<GroupFormState> {
   const name = String(formData.get("name") ?? "").trim();
+  // The database checks this is one of the two allowed values.
+  const jarStartMode = String(formData.get("jar_start_mode") ?? "admin");
 
   if (!name) {
     return { status: "error", message: copy.groupErrors.NO_NAME };
@@ -32,7 +34,7 @@ export async function createGroup(
 
   const supabase = await createClient();
   const { data, error } = await supabase
-    .rpc("create_pickle_group", { p_name: name })
+    .rpc("create_pickle_group", { p_name: name, p_jar_start_mode: jarStartMode })
     .single();
 
   if (error || !data) {
@@ -81,12 +83,10 @@ export async function leaveGroup(formData: FormData): Promise<void> {
 
   if (error) {
     // The only realistic failure is the last-admin rule, which the settings
-    // screen already warns about. Send them back with it named in the URL so
-    // the screen can say what happened.
+    // screen already warns about. Send them back with its short error key in
+    // the URL so the screen can say what happened.
     redirect(
-      `/groups/${groupId}/settings?error=${encodeURIComponent(
-        groupErrorMessage(error),
-      )}`,
+      `/groups/${groupId}/settings?error=${encodeURIComponent(groupErrorKey(error))}`,
     );
   }
 
@@ -105,9 +105,7 @@ export async function regenerateCode(formData: FormData): Promise<void> {
 
   if (error) {
     redirect(
-      `/groups/${groupId}/settings?error=${encodeURIComponent(
-        groupErrorMessage(error),
-      )}`,
+      `/groups/${groupId}/settings?error=${encodeURIComponent(groupErrorKey(error))}`,
     );
   }
 
