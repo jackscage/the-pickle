@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
-import { adminClient, Cast, signedOutClient, type Member } from "./helpers/members";
+import { expect, test, type Browser, type Page } from "@playwright/test";
+import { copy } from "../src/lib/copy";
+import {
+  adminClient,
+  Cast,
+  signedOutClient,
+  signInThroughScreen,
+  type Member,
+} from "./helpers/members";
 
 /**
  * ============================================================================
@@ -370,4 +377,141 @@ test("the service key (used only for test setup) confirms authorship is really s
     .select("author_id")
     .in("pickle_id", pickleIds);
   expect(data!.map((r) => r.author_id)).toEqual([author.id, author.id]);
+});
+
+// ===========================================================================
+// THE BROWSER HALF
+// ===========================================================================
+// Everything above talks to the database directly. This half signs in as
+// real people in a real browser, visits every screen, and records every
+// single response the browser receives — pages, data, everything — so it
+// checks what actually reaches someone's device, not what the screen shows.
+// ===========================================================================
+
+type Seen = { url: string; body: string };
+
+/** Signs `who` in, in their own browser, and records everything it receives. */
+async function browserFor(browser: Browser, who: Member) {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const seen: Seen[] = [];
+  page.on("response", async (response) => {
+    try {
+      seen.push({ url: response.url(), body: await response.text() });
+    } catch {
+      // Redirects and some cached responses have no body to read.
+    }
+  });
+  await signInThroughScreen(page, who, "/groups");
+  return { page, seen, close: () => context.close() };
+}
+
+/** Every screen a member could visit for this group and jar. */
+function screensFor(groupId: string, jarId: string) {
+  return [
+    `/groups`,
+    `/groups/${groupId}`,
+    `/groups/${groupId}/roster`,
+    `/groups/${groupId}/settings`,
+    `/groups/${groupId}/past`,
+    `/groups/${groupId}/put`,
+    `/groups/${groupId}/jars/${jarId}`,
+  ];
+}
+
+async function visitAll(page: Page, paths: string[]) {
+  for (const path of paths) {
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+  }
+}
+
+test("2h + 3. in the browser: no response ever carries a pickle together with its author", async ({
+  browser,
+}) => {
+  // Five sign-ins and seven screens per person: give it time.
+  test.setTimeout(180_000);
+  const { group, jarId, texts } = await jarWithPickles();
+  const paths = screensFor(group.id, jarId);
+
+  // --- Before the jar opens: nobody's browser receives the words at all. ---
+  for (const who of [bystander, admin, author]) {
+    const b = await browserFor(browser, who);
+    await visitAll(b.page, paths);
+    for (const { url, body } of b.seen) {
+      for (const text of texts) {
+        expect(body, `${who.displayName} received an unopened pickle from ${url}`).not.toContain(
+          text,
+        );
+      }
+    }
+    await b.close();
+  }
+
+  // --- After it opens: the words arrive, and never next to the author. ---
+  await admin.db.rpc("open_jar", { p_jar_id: jarId });
+
+  for (const who of [bystander, admin]) {
+    const b = await browserFor(browser, who);
+    await visitAll(b.page, paths);
+
+    const withPickles = b.seen.filter(({ body }) => texts.some((t) => body.includes(t)));
+    expect(withPickles.length, "the opened jar should have shown its pickles").toBeGreaterThan(0);
+
+    for (const { url, body } of withPickles) {
+      for (const fingerprint of authorFingerprints) {
+        expect(body, `${url} carried a pickle AND its author`).not.toContain(fingerprint);
+      }
+      // No authorship data of any kind rides along with the pickles.
+      expect(body).not.toContain("pickle_authors");
+      expect(body).not.toContain("author_id");
+    }
+
+    // On screen: every pickle says Anonymous; none says "You wrote this".
+    await b.page.goto(`/groups/${group.id}/jars/${jarId}`);
+    await expect(b.page.getByTestId("pickle")).toHaveCount(2);
+    await expect(b.page.getByText(copy.pickle.anonymous, { exact: true })).toHaveCount(2);
+    await expect(b.page.getByText(copy.pickle.youWroteThis)).toHaveCount(0);
+    await b.close();
+  }
+
+  // The author, and only the author, sees "You wrote this".
+  const a = await browserFor(browser, author);
+  await a.page.goto(`/groups/${group.id}/jars/${jarId}`);
+  await expect(a.page.getByText(copy.pickle.youWroteThis)).toHaveCount(2);
+  await a.close();
+});
+
+test("4. in the browser: the roster is identical before and after pickles go in", async ({
+  browser,
+}) => {
+  const group = await cast.group(admin, "admin");
+  await cast.join(author, group.code);
+  await cast.join(bystander, group.code);
+  const jarId = await cast.startJar(admin, group.id);
+
+  const b = await browserFor(browser, bystander);
+  const rosterText = async () => {
+    await b.page.goto(`/groups/${group.id}/roster`);
+    return b.page.locator("main").innerText();
+  };
+
+  const before = await rosterText();
+  const texts = [`roster ${randomUUID()}`, `roster ${randomUUID()}`];
+  const pickleIds = [
+    await cast.putPickle(author, jarId, texts[0]),
+    await cast.putPickle(author, jarId, texts[1]),
+  ];
+  b.seen.length = 0;
+  const after = await rosterText();
+
+  expect(after).toEqual(before);
+
+  // And nothing pickle-shaped arrived with the roster at all.
+  for (const { url, body } of b.seen) {
+    for (const marker of [...texts, ...pickleIds]) {
+      expect(body, `${url} carried pickle data with the roster`).not.toContain(marker);
+    }
+  }
+  await b.close();
 });
